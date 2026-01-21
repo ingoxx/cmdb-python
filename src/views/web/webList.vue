@@ -627,7 +627,8 @@ export default {
       if (this.$refs.webUploadRef.uploadFiles.length === 0) {
           return this.$message.error('请选取文件')
         }
-      this.$refs.webUploadRef.submit();
+      // this.$refs.webUploadRef.submit();
+      this.clickUploadFile();
   },
   async clickUploadFile(option) {
       this.uploadLoading = true;
@@ -660,7 +661,7 @@ export default {
           }
         }
       }
-    ).catch(err => {console.log("assetsUpload err >>>", err)});
+      ).catch(err => {console.log("assetsUpload err >>>", err)});
       if (resp.data.code === 10000) {
         
         this.$message.success(resp.data.message);
