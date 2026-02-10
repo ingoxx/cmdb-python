@@ -374,6 +374,7 @@
         title="上传文件"
         :visible.sync="uploadVisible"
       >
+      <!--  -->
         <el-upload
               class="upload-demo"
               ref="webUploadRef"
@@ -397,6 +398,14 @@
 			<div>
 				注意：上传的文件名必须跟更新路径上的文件名一致, 最多同时上传20个文件
 			</div> 
+      <transition name="el-zoom-in-center">
+        <!-- <div v-show="show2" class="transition-box">.el-zoom-in-center</div> -->
+        <div class="cus-progress" v-show="showPercentage">
+          <el-progress :percentage="percentage" v-if="percentage < 100"></el-progress>
+          <el-progress :percentage="100" status="success" v-else></el-progress>
+        </div>
+      </transition>
+      
 			<div class="cus-el-upload">
 				<el-button style="margin-left: 10px;" size="small" type="success" @click="cusSubmit()" :loading="uploadLoading" icon="el-icon-s-promotion">点击上传</el-button>
 			</div>
@@ -497,14 +506,16 @@ import "codemirror/theme/ambiance.css";
 import { elConfirm } from "@/modules";
 import baseUrl from "../../utlis/baseUrl";
 import { Notification } from "element-ui";
-import { DarkMode } from '@vue-a11y/dark-mode'
+import { DarkMode } from '@vue-a11y/dark-mode';
 import { EventBus } from '@/utlis/eventBus';
 
 export default {
   name: "webList",
   data() {
     return {
-		uploadLoading: false,
+      showPercentage: false,
+      percentage: 0,
+		  uploadLoading: false,
       fileList: [],
       props: { multiple: true },
       refreshCdnLoading: false,
@@ -620,20 +631,24 @@ export default {
     // DarkMode,
   },
   methods: {
+  formatProgress(percentage) {
+      return percentage === 100 ? '满' : `${percentage}%`;
+  },
 	handleChange(file, fileList) {
 		this.fileList = fileList;
 	},
   cusSubmit() {
-      if (this.$refs.webUploadRef.uploadFiles.length === 0) {
-          return this.$message.error('请选取文件')
-        }
-      // this.$refs.webUploadRef.submit();
-      this.clickUploadFile();
+    if (this.$refs.webUploadRef.uploadFiles.length === 0) {
+      return this.$message.error('请选取文件')
+    }
+    // 直接使用 submit() 提交
+    // this.$refs.webUploadRef.submit();
+    this.clickUploadFile();
   },
+
   async clickUploadFile(option) {
       this.uploadLoading = true;
-
-      // this.beforeUpload();
+      this.showPercentage = true;
 
       let formData = new FormData();
 
@@ -646,33 +661,45 @@ export default {
 
       files.forEach(file => {
         formData.append('content', file);
-      })
+      });
 
-      this.fileList.forEach(file=>{
+      this.fileList.forEach(file => {
         formData.append('files', file.raw);
       });
 
-      const resp = await webFileUpload(formData , {
+      // 发起上传请求
+      const resp = await webFileUpload(formData, {
+        timeout: 1200000,
         onUploadProgress: (e) => {
           if (e.total > 0) {
-              option.onProgress({
+            this.handleProgress({
               percent: Math.round((e.loaded / e.total) * 100)
-            })
+            });
           }
         }
-      }
-      ).catch(err => {console.log("assetsUpload err >>>", err)});
+      }).catch(err => { 
+        console.log("assetsUpload err >>>", err) 
+      });
+
       if (resp.data.code === 10000) {
-        
         this.$message.success(resp.data.message);
       } else {
         this.$message.error(resp.data.message);
       }
 
       this.getWebList();
-      this.$refs.webUploadRef.clearFiles();
-      this.uploadVisible = false;
-      this.uploadLoading = false;
+      setTimeout(() =>{
+        this.$refs.webUploadRef.clearFiles();
+        this.uploadVisible = false;
+        this.uploadLoading = false;
+        this.showPercentage = false;
+        this.percentage = 0;
+      }, 3000);
+      // this.$refs.webUploadRef.clearFiles();
+      // this.uploadVisible = false;
+      // this.uploadLoading = false;
+      // this.showPercentage = false;
+      // this.percentage = 0;
     },
     formatUpdatePath(data) {
       const nd = data.split("\n").map(line => line.replace(/\\/g, "/"));
@@ -750,7 +777,8 @@ export default {
       this.$message.error('只能同时上传20个文件')
     },
     handleProgress(event, file) {
-      // console.log('上传进度:', event.percent)
+      console.log('上传进度:', event.percent)
+      this.percentage = event.percent;
     },
     uploadSuccess (response, file) {
       if (response.code === 10000 || response.code === 200) {
@@ -1458,5 +1486,7 @@ export default {
     margin-top: 31px;
   }
 }
-
+.cus-progress {
+  margin: 8px 169px;
+}
 </style>
